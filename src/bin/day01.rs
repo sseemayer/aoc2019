@@ -5,6 +5,22 @@ use failure::Error;
 
 type Result<T> = std::result::Result<T, Error>;
 
+fn fuel_for_mass(m: &u32) -> u32 {
+    return std::cmp::max(0, *m as i64 / 3 - 2) as u32;
+}
+
+fn fuel_for_mass_and_fuel(m: &u32) -> u32 {
+    let mut total_fuel = fuel_for_mass(m);
+
+    let mut extra_fuel = fuel_for_mass(&total_fuel);
+    while extra_fuel > 0 {
+        total_fuel += extra_fuel;
+        extra_fuel = fuel_for_mass(&extra_fuel);
+    }
+
+    total_fuel
+}
+
 fn main() -> Result<()> {
     let f = File::open("data/day01/input")?;
     let br = BufReader::new(f);
@@ -14,9 +30,10 @@ fn main() -> Result<()> {
         .map(|l| l?.parse().map_err(|e: std::num::ParseIntError| e.into()))
         .collect::<Result<Vec<u32>>>()?;
 
-    let fuel: u32 = masses.iter().map(|m| (m / 3) - 2).sum();
+    let fuel_for_modules: u32 = masses.iter().map(fuel_for_mass).sum();
+    println!("Fuel needed for modules: {}", fuel_for_modules);
 
-    println!("Fuel needed: {}", fuel);
-
+    let fuel_total: u32 = masses.iter().map(fuel_for_mass_and_fuel).sum();
+    println!("Fuel total needed: {}", fuel_total);
     Ok(())
 }
