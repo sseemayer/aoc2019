@@ -1,8 +1,8 @@
 use failure::{format_err, Error};
 use std::collections::HashMap;
-use std::fs::File;
-use std::io::{BufRead, BufReader};
 type Result<T> = std::result::Result<T, Error>;
+
+use aoc2019::util::read_to_parsed_lines;
 
 #[derive(Clone, Copy, Hash, Eq, PartialEq)]
 struct Vec3 {
@@ -224,13 +224,7 @@ impl PeriodFinder3D {
 }
 
 fn main() -> Result<()> {
-    let f = File::open("data/day12/input")?;
-    let br = BufReader::new(f);
-
-    let moons: Vec<Moon> = br
-        .lines()
-        .map(|l| l?.parse())
-        .collect::<Result<Vec<Moon>>>()?;
+    let moons = read_to_parsed_lines("data/day12/input", &|l: &str| l.parse())?;
 
     let mut state = State { moons };
     let mut step = 0;
