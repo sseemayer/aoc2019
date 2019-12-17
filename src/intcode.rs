@@ -15,6 +15,15 @@ pub enum IntCodeResult {
 }
 
 impl State {
+    pub fn new(program: Vec<i64>) -> Self {
+        State {
+            memory: program,
+            ic: 0,
+            inputs: Vec::new(),
+            relative_base: 0,
+        }
+    }
+
     fn get_memory(&mut self, address: usize) -> i64 {
         while self.memory.len() <= address {
             self.memory.push(0);

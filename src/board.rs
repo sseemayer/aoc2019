@@ -16,7 +16,30 @@ impl std::fmt::Display for Position {
     }
 }
 
-#[derive(Copy, Clone)]
+impl std::ops::Add for Position {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Position {
+            i: self.i + rhs.i,
+            j: self.j + rhs.j,
+        }
+    }
+}
+
+impl std::ops::AddAssign for Position {
+    fn add_assign(&mut self, rhs: Self) {
+        self.i += rhs.i;
+        self.j += rhs.j;
+    }
+}
+
+impl From<(i64, i64)> for Position {
+    fn from(p: (i64, i64)) -> Self {
+        Position { i: p.0, j: p.1 }
+    }
+}
+
+#[derive(Copy, Clone, Hash, Eq, PartialEq)]
 pub enum Direction {
     North,
     South,
@@ -44,6 +67,24 @@ impl Direction {
         Direction::West,
     ];
 
+    pub fn turn_left(&self) -> Direction {
+        match self {
+            Direction::North => Direction::West,
+            Direction::East => Direction::North,
+            Direction::South => Direction::East,
+            Direction::West => Direction::South,
+        }
+    }
+
+    pub fn turn_right(&self) -> Direction {
+        match self {
+            Direction::North => Direction::East,
+            Direction::East => Direction::South,
+            Direction::South => Direction::West,
+            Direction::West => Direction::North,
+        }
+    }
+
     pub fn to_input(&self) -> i64 {
         match self {
             Direction::North => 1,
@@ -64,7 +105,7 @@ impl Direction {
 }
 
 #[derive(Debug)]
-pub struct Board<T: std::fmt::Display> {
+pub struct Board<T> {
     pub tiles: HashMap<Position, T>,
 }
 
@@ -105,7 +146,7 @@ impl<T: std::fmt::Display + std::default::Default> std::fmt::Display for Board<T
     }
 }
 
-impl<T: std::fmt::Display + std::default::Default + std::marker::Copy> Board<T> {
+impl<T: std::default::Default + std::marker::Copy + std::cmp::PartialEq> Board<T> {
     pub fn new() -> Self {
         Board {
             tiles: HashMap::new(),
@@ -118,5 +159,15 @@ impl<T: std::fmt::Display + std::default::Default + std::marker::Copy> Board<T> 
 
     pub fn set(&mut self, pos: &Position, tile: T) {
         self.tiles.insert(pos.clone(), tile);
+    }
+
+    pub fn where_is(&self, tile: &T) -> Option<Position> {
+        for (pos, t) in self.tiles.iter() {
+            if t == tile {
+                return Some(*pos);
+            }
+        }
+
+        None
     }
 }
