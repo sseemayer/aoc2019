@@ -1,0 +1,122 @@
+use std::collections::HashMap;
+
+#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
+pub struct Position {
+    pub i: i64,
+    pub j: i64,
+}
+
+impl Position {
+    pub const ZERO: Position = Position { i: 0, j: 0 };
+}
+
+impl std::fmt::Display for Position {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        write!(f, "({}, {})", self.j, self.i)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum Direction {
+    North,
+    South,
+    West,
+    East,
+}
+
+impl std::fmt::Debug for Direction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        let c = match self {
+            Direction::North => "🠉",
+            Direction::South => "🠋",
+            Direction::West => "🠈 ",
+            Direction::East => "🠊 ",
+        };
+        write!(f, "{}", c)
+    }
+}
+
+impl Direction {
+    pub const ALL: [Direction; 4] = [
+        Direction::North,
+        Direction::East,
+        Direction::South,
+        Direction::West,
+    ];
+
+    pub fn to_input(&self) -> i64 {
+        match self {
+            Direction::North => 1,
+            Direction::South => 2,
+            Direction::West => 3,
+            Direction::East => 4,
+        }
+    }
+
+    pub fn to_ofs(&self) -> (i64, i64) {
+        match self {
+            Direction::North => (-1, 0),
+            Direction::South => (1, 0),
+            Direction::West => (0, -1),
+            Direction::East => (0, 1),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct Board<T: std::fmt::Display> {
+    pub tiles: HashMap<Position, T>,
+}
+
+impl<T: std::fmt::Display + std::default::Default> std::fmt::Display for Board<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
+        // find maximum drawing coords
+        let mut i_min = 0;
+        let mut i_max = 0;
+        let mut j_min = 0;
+        let mut j_max = 0;
+        for pos in self.tiles.keys() {
+            if pos.i < i_min {
+                i_min = pos.i;
+            }
+            if pos.i > i_max {
+                i_max = pos.i;
+            }
+            if pos.j < j_min {
+                j_min = pos.j;
+            }
+            if pos.j > j_max {
+                j_max = pos.j;
+            }
+        }
+
+        for i in i_min..=i_max {
+            for j in j_min..=j_max {
+                if let Some(t) = self.tiles.get(&Position { i, j }) {
+                    write!(f, "{}", t)?;
+                } else {
+                    write!(f, "{}", T::default())?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T: std::fmt::Display + std::default::Default + std::marker::Copy> Board<T> {
+    pub fn new() -> Self {
+        Board {
+            tiles: HashMap::new(),
+        }
+    }
+
+    pub fn get(&self, pos: &Position) -> T {
+        self.tiles.get(pos).map(|t| *t).unwrap_or(T::default())
+    }
+
+    pub fn set(&mut self, pos: &Position, tile: T) {
+        self.tiles.insert(pos.clone(), tile);
+    }
+}

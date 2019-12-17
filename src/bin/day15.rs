@@ -1,25 +1,10 @@
-use aoc2019::intcode::{parse_program, IntCodeResult, State};
-use aoc2019::result::{format_err, Error, Result};
+use aoc2019::board::{Board, Direction, Position};
+use aoc2019::intcode::{parse_program, State};
+use aoc2019::result::{format_err, Result};
 use aoc2019::util::read_to_string;
 use std::collections::{HashMap, HashSet};
 
-#[derive(Debug, Hash, PartialEq, Eq, Copy, Clone)]
-struct Position {
-    i: i64,
-    j: i64,
-}
-
-impl Position {
-    const ZERO: Position = Position { i: 0, j: 0 };
-}
-
-impl std::fmt::Display for Position {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        write!(f, "({}, {})", self.j, self.i)
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Copy, Clone)]
 enum Tile {
     Unknown,
     Empty,
@@ -39,50 +24,9 @@ impl Tile {
     }
 }
 
-#[derive(Copy, Clone)]
-enum Direction {
-    North,
-    South,
-    West,
-    East,
-}
-
-impl std::fmt::Debug for Direction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        let c = match self {
-            Direction::North => "🠉",
-            Direction::South => "🠋",
-            Direction::West => "🠈 ",
-            Direction::East => "🠊 ",
-        };
-        write!(f, "{}", c)
-    }
-}
-
-impl Direction {
-    const ALL: [Direction; 4] = [
-        Direction::North,
-        Direction::East,
-        Direction::South,
-        Direction::West,
-    ];
-
-    fn to_input(&self) -> i64 {
-        match self {
-            Direction::North => 1,
-            Direction::South => 2,
-            Direction::West => 3,
-            Direction::East => 4,
-        }
-    }
-
-    fn to_ofs(&self) -> (i64, i64) {
-        match self {
-            Direction::North => (-1, 0),
-            Direction::South => (1, 0),
-            Direction::West => (0, -1),
-            Direction::East => (0, 1),
-        }
+impl std::default::Default for Tile {
+    fn default() -> Self {
+        Tile::Unknown
     }
 }
 
@@ -103,61 +47,12 @@ enum BfsResult {
     NotFound { max_path_len: usize },
 }
 
-#[derive(Debug)]
-struct Board {
-    tiles: HashMap<Position, Tile>,
+trait Bfs {
+    fn search_bfs(&self, stat_pos: &Position, target: &Tile) -> BfsResult;
+    fn run_discovery(&mut self, program: &Vec<i64>) -> Result<()>;
 }
 
-impl std::fmt::Display for Board {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
-        // find maximum drawing coords
-        let mut i_min = 0;
-        let mut i_max = 0;
-        let mut j_min = 0;
-        let mut j_max = 0;
-        for pos in self.tiles.keys() {
-            if pos.i < i_min {
-                i_min = pos.i;
-            }
-            if pos.i > i_max {
-                i_max = pos.i;
-            }
-            if pos.j < j_min {
-                j_min = pos.j;
-            }
-            if pos.j > j_max {
-                j_max = pos.j;
-            }
-        }
-
-        for i in i_min..=i_max {
-            for j in j_min..=j_max {
-                let t = self.tiles.get(&Position { i, j }).unwrap_or(&Tile::Unknown);
-
-                write!(f, "{}", t)?;
-            }
-            write!(f, "\n")?;
-        }
-
-        Ok(())
-    }
-}
-
-impl Board {
-    fn new() -> Self {
-        let mut tiles = HashMap::new();
-        tiles.insert(Position::ZERO, Tile::Empty);
-        Board { tiles }
-    }
-
-    fn get(&self, pos: &Position) -> &Tile {
-        self.tiles.get(pos).unwrap_or(&Tile::Unknown)
-    }
-
-    fn set(&mut self, pos: &Position, tile: Tile) {
-        self.tiles.insert(pos.clone(), tile);
-    }
-
+impl Bfs for Board<Tile> {
     fn search_bfs(&self, start_pos: &Position, target: &Tile) -> BfsResult {
         // this is breadth first search for a tile of interest, given the current knowledge
         let mut queue = vec![(start_pos.to_owned(), Vec::new())];
@@ -172,12 +67,12 @@ impl Board {
             seen.insert(cur.clone());
             let tile = self.get(&cur);
 
-            if tile == target {
+            if &tile == target {
                 return BfsResult::Found {
                     pos: cur,
                     path: history,
                 };
-            } else if tile == &Tile::Wall {
+            } else if tile == Tile::Wall {
                 // don't extend search from this tile
                 continue;
             }
@@ -246,6 +141,7 @@ fn main() -> Result<()> {
     println!("Program: {:?}", program);
 
     let mut board = Board::new();
+    board.set(&Position::ZERO, Tile::Empty);
     board.run_discovery(&program)?;
 
     println!("BOARD:\n{}", board);
