@@ -170,4 +170,14 @@ impl<T: std::default::Default + std::marker::Copy + std::cmp::PartialEq> Board<T
 
         None
     }
+
+    pub fn where_are(&self, tile: &T) -> Vec<Position> {
+        let mut out = Vec::new();
+        for (pos, t) in self.tiles.iter() {
+            if t == tile {
+                out.push(*pos);
+            }
+        }
+        out
+    }
 }
