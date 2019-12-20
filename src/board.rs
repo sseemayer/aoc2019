@@ -181,3 +181,22 @@ impl<T: std::default::Default + std::marker::Copy + std::cmp::PartialEq> Board<T
         out
     }
 }
+
+impl<
+        T: std::default::Default
+            + std::marker::Copy
+            + std::cmp::PartialEq
+            + std::cmp::Eq
+            + std::hash::Hash,
+    > Board<T>
+{
+    pub fn count(&self) -> HashMap<T, usize> {
+        let mut out = HashMap::new();
+
+        for t in self.tiles.values() {
+            out.entry(*t).and_modify(|c| *c += 1).or_insert(1);
+        }
+
+        out
+    }
+}
