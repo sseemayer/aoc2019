@@ -80,7 +80,7 @@ impl Transformation {
         } else if times == 1 {
             self.clone()
         } else {
-            let odd = times % 2 == 0;
+            let odd = times % 2 == 1;
             let half = times / 2;
 
             let mut rep = self.repeat(half);
@@ -97,9 +97,17 @@ impl Transformation {
 impl std::ops::MulAssign<&Transformation> for Transformation {
     fn mul_assign(&mut self, rhs: &Transformation) {
         // c*(ax + b) + d = acx + bc + d
-        self.a = (self.a * rhs.a) % (self.r as i128);
-        self.b = (self.b * rhs.a + rhs.b) % (self.r as i128);
+        self.a = self.modulo(self.a * rhs.a);
+        self.b = self.modulo(self.b * rhs.a + rhs.b);
     }
+}
+
+fn extended_gcd(a: i128, b: i128) -> (i128, i128, i128) {
+    if a == 0 {
+        return (b, 0, 1);
+    }
+    let (gcd, x, y) = extended_gcd(b % a, a);
+    (gcd, (y - (b / a) * x), x)
 }
 
 fn main() -> Result<()> {
@@ -110,27 +118,27 @@ fn main() -> Result<()> {
     for instr in &instrs {
         transform = instr.apply(transform);
     }
-    println!("Transform is {:?}", transform);
+    //println!("Transform is {:?}", transform);
     println!("Card 2019 is at position {}", transform.transform(2019));
 
-    println!("PART TWO");
+    println!("\nPART TWO");
     let mut transform = Transformation::new(119315717514047);
     for instr in &instrs {
         transform = instr.apply(transform);
     }
-    println!("One-time transform is {:?}", transform);
+
+    // println!("One-time transform is {:?}", transform);
 
     let full_transform = transform.repeat(101741582076661usize);
 
-    println!("\n\nFull transform is {:?}", full_transform);
+    // println!("Full transform is {:?}", full_transform);
 
-    // 2020 = ax + b (mod r)
-    for i in 0..full_transform.r {
-        if full_transform.transform(i) == 2020 {
-            println!("At position 2020, got card {}", i);
-            break;
-        }
-    }
+    let lhs = full_transform.modulo(2020 - full_transform.b);
+
+    let (_, a_inv, _) = extended_gcd(full_transform.a, full_transform.r);
+    let x = full_transform.modulo(lhs * a_inv);
+
+    println!("The card at 2020 is {}", x);
 
     Ok(())
 }
