@@ -26,40 +26,20 @@ impl std::str::FromStr for Instruction {
 }
 
 impl Instruction {
-    fn apply(&self, mut ge: GroupElem) -> GroupElem {
+    fn into_transformation(&self, r: i128) -> Transformation {
         match self {
             // -x-1
-            Instruction::DealIntoNewStack => {
-                ge.a = (-ge.a) % (ge.r as i128);
-                ge.b = (-ge.b - 1) % (ge.r as i128);
-            }
+            Instruction::DealIntoNewStack => Transformation { a: -1, b: -1, r },
 
             // x - n
-            Instruction::Cut { n } => {
-                ge.b = (ge.b - *n) % (ge.r as i128);
-            }
+            Instruction::Cut { n } => Transformation { a: 1, b: -*n, r },
 
             // a * x
-            Instruction::DealWithIncrement { n } => {
-                // 23x + 123 (mod 10)
-                // = 23x + 3 (mod 10)
-                //
-                // x    23x 3x
-                // 0      0  0
-                // 1     23  3
-                // 2     46  6
-                // 3     69  9
-                // 4     92 12
-                // 5    115 15
-                // 6    138 18
-                // 7    161 21
-                // 8    184 24
-                // 9    207 27
-
-                ge.a = (ge.a * *n) % (ge.r as i128);
-                ge.b = (ge.b * *n) % (ge.r as i128);
-            }
-        };
+            Instruction::DealWithIncrement { n } => Transformation { a: *n, b: 0, r },
+        }
+    }
+    fn apply(&self, mut ge: Transformation) -> Transformation {
+        ge *= &self.into_transformation(ge.r);
 
         ge
     }
@@ -67,15 +47,15 @@ impl Instruction {
 
 /// a*x + b (mod r)
 #[derive(Debug, Clone)]
-struct GroupElem {
+struct Transformation {
     a: i128,
     b: i128,
     r: i128,
 }
 
-impl GroupElem {
+impl Transformation {
     fn new(n_cards: i128) -> Self {
-        GroupElem {
+        Transformation {
             a: 1,
             b: 0,
             r: n_cards,
@@ -90,9 +70,9 @@ impl GroupElem {
         self.modulo(self.a * card_pos + self.b)
     }
 
-    fn repeat(&self, times: usize) -> GroupElem {
+    fn repeat(&self, times: usize) -> Transformation {
         if times == 0 {
-            GroupElem {
+            Transformation {
                 a: 1,
                 b: 0,
                 r: self.r,
@@ -114,8 +94,8 @@ impl GroupElem {
     }
 }
 
-impl std::ops::MulAssign<&GroupElem> for GroupElem {
-    fn mul_assign(&mut self, rhs: &GroupElem) {
+impl std::ops::MulAssign<&Transformation> for Transformation {
+    fn mul_assign(&mut self, rhs: &Transformation) {
         // c*(ax + b) + d = acx + bc + d
         self.a = (self.a * rhs.a) % (self.r as i128);
         self.b = (self.b * rhs.a + rhs.b) % (self.r as i128);
@@ -126,7 +106,7 @@ fn main() -> Result<()> {
     let instrs = read_to_parsed_lines("data/day22/input", &|l: &str| l.parse::<Instruction>())?;
 
     println!("PART ONE");
-    let mut transform = GroupElem::new(10007);
+    let mut transform = Transformation::new(10007);
     for instr in &instrs {
         transform = instr.apply(transform);
     }
@@ -134,7 +114,7 @@ fn main() -> Result<()> {
     println!("Card 2019 is at position {}", transform.transform(2019));
 
     println!("PART TWO");
-    let mut transform = GroupElem::new(119315717514047);
+    let mut transform = Transformation::new(119315717514047);
     for instr in &instrs {
         transform = instr.apply(transform);
     }
@@ -162,7 +142,7 @@ mod test {
 
     #[test]
     fn test_mod() {
-        let ge = GroupElem::new(10);
+        let ge = Transformation::new(10);
         assert_eq!(ge.modulo(0), 0);
         assert_eq!(ge.modulo(5), 5);
         assert_eq!(ge.modulo(10), 0);
@@ -178,7 +158,7 @@ mod test {
 
     #[test]
     fn test_cut() {
-        let cut3 = Instruction::Cut { n: 3 }.apply(GroupElem::new(10));
+        let cut3 = Instruction::Cut { n: 3 }.into_transformation(10);
         println!("Cut3 is {:?}", cut3);
         assert_eq!(cut3.transform(0), 7);
         assert_eq!(cut3.transform(1), 8);
@@ -191,7 +171,7 @@ mod test {
         assert_eq!(cut3.transform(8), 5);
         assert_eq!(cut3.transform(9), 6);
 
-        let cut_neg4 = Instruction::Cut { n: -4 }.apply(GroupElem::new(10));
+        let cut_neg4 = Instruction::Cut { n: -4 }.into_transformation(10);
         println!("CutNeg4 is {:?}", cut_neg4);
         assert_eq!(cut_neg4.transform(0), 4);
         assert_eq!(cut_neg4.transform(1), 5);
@@ -207,7 +187,7 @@ mod test {
 
     #[test]
     fn test_deal_new_stack() {
-        let dins = Instruction::DealIntoNewStack.apply(GroupElem::new(10));
+        let dins = Instruction::DealIntoNewStack.into_transformation(10);
         println!("DNS is {:?}", dins);
         // 0123456789
         //  V V V V V
@@ -226,7 +206,7 @@ mod test {
 
     #[test]
     fn test_deal_with_increment() {
-        let dwi3 = Instruction::DealWithIncrement { n: 3 }.apply(GroupElem::new(10));
+        let dwi3 = Instruction::DealWithIncrement { n: 3 }.into_transformation(10);
         assert_eq!(dwi3.transform(0), 0); // 0
         assert_eq!(dwi3.transform(1), 3); // 7
         assert_eq!(dwi3.transform(2), 6); // 4
@@ -253,7 +233,7 @@ mod test {
             Instruction::DealIntoNewStack,
         ];
 
-        let mut ge = GroupElem::new(10);
+        let mut ge = Transformation::new(10);
         for instr in instrs.iter() {
             ge = instr.apply(ge);
         }
@@ -286,7 +266,7 @@ mod test {
             Instruction::DealIntoNewStack,
         ];
 
-        let mut ge = GroupElem::new(10);
+        let mut ge = Transformation::new(10);
         for instr in instrs.iter() {
             ge = instr.apply(ge);
         }
@@ -319,7 +299,7 @@ mod test {
             Instruction::Cut { n: -2 },
         ];
 
-        let mut ge = GroupElem::new(10);
+        let mut ge = Transformation::new(10);
         for instr in instrs.iter() {
             ge = instr.apply(ge);
         }
@@ -366,7 +346,7 @@ mod test {
             Instruction::Cut { n: -1 },
         ];
 
-        let mut ge = GroupElem::new(10);
+        let mut ge = Transformation::new(10);
         for instr in instrs.iter() {
             ge = instr.apply(ge);
         }
