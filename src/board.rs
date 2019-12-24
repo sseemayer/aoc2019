@@ -104,7 +104,7 @@ impl Direction {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board<T> {
     pub tiles: HashMap<Position, T>,
 }
@@ -112,6 +112,31 @@ pub struct Board<T> {
 impl<T: std::fmt::Display + std::default::Default> std::fmt::Display for Board<T> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::result::Result<(), std::fmt::Error> {
         // find maximum drawing coords
+        let (i_min, i_max, j_min, j_max) = self.get_extent();
+
+        for i in i_min..=i_max {
+            for j in j_min..=j_max {
+                if let Some(t) = self.tiles.get(&Position { i, j }) {
+                    write!(f, "{}", t)?;
+                } else {
+                    write!(f, "{}", T::default())?;
+                }
+            }
+            write!(f, "\n")?;
+        }
+
+        Ok(())
+    }
+}
+
+impl<T> Board<T> {
+    pub fn new() -> Self {
+        Board {
+            tiles: HashMap::new(),
+        }
+    }
+
+    pub fn get_extent(&self) -> (i64, i64, i64, i64) {
         let mut i_min = 0;
         let mut i_max = 0;
         let mut j_min = 0;
@@ -131,28 +156,11 @@ impl<T: std::fmt::Display + std::default::Default> std::fmt::Display for Board<T
             }
         }
 
-        for i in i_min..=i_max {
-            for j in j_min..=j_max {
-                if let Some(t) = self.tiles.get(&Position { i, j }) {
-                    write!(f, "{}", t)?;
-                } else {
-                    write!(f, "{}", T::default())?;
-                }
-            }
-            write!(f, "\n")?;
-        }
-
-        Ok(())
+        (i_min, i_max, j_min, j_max)
     }
 }
 
 impl<T: std::default::Default + std::marker::Copy + std::cmp::PartialEq> Board<T> {
-    pub fn new() -> Self {
-        Board {
-            tiles: HashMap::new(),
-        }
-    }
-
     pub fn get(&self, pos: &Position) -> T {
         self.tiles.get(pos).map(|t| *t).unwrap_or(T::default())
     }
@@ -160,7 +168,6 @@ impl<T: std::default::Default + std::marker::Copy + std::cmp::PartialEq> Board<T
     pub fn set(&mut self, pos: &Position, tile: T) {
         self.tiles.insert(pos.clone(), tile);
     }
-
     pub fn where_is(&self, tile: &T) -> Option<Position> {
         for (pos, t) in self.tiles.iter() {
             if t == tile {
